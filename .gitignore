@@ -1,0 +1,47 @@
+# Symfony
+###> symfony/framework-bundle ###
+/.env.local
+/.env.local.php
+/.env.*.local
+/config/secrets/prod/prod.decrypt.private.php
+/public/bundles/
+/var/
+/vendor/
+###< symfony/framework-bundle ###
+
+# Database
+###> doctrine/doctrine-bundle ###
+/var/data.db
+###< doctrine/doctrine-bundle ###
+
+# Images and uploads
+/public/images/
+/public/uploads/
+
+# Logs
+/var/log/
+*.log
+
+# Cache
+/var/cache/
+/var/tmp/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Sensitive config
+.env.prod
+.env.production
+config/database.yml
+config/secrets.yml
+
+# Backup files
+*.bak
+*.backup

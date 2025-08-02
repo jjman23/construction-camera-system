@@ -1,0 +1,174 @@
+{% extends "camera_base.html.twig" %}
+
+{% block title %}{{ camera.name }} - {{ building.name }} Live View{% endblock %}
+
+{% block content %}
+<div class="video-container">
+    {% if camera.liveEnabled %}
+        {% if camera.rtspUrl %}
+            <iframe src="{{ camera.rtspUrl }}" allowfullscreen="true"></iframe>
+        {% else %}
+            <div class="d-flex flex-column align-items-center justify-content-center text-white">
+                <i class="bi bi-camera-video fs-1 mb-3"></i>
+                <h3>Live Stream Not Configured</h3>
+                <p class="text-muted">No stream URL has been configured for this camera.</p>
+                {% if camera.galleryEnabled %}
+                    <a href="{{ path('camera_gallery', {building_slug: building.slug, camera_id: camera.id}) }}" 
+                       class="btn btn-primary">
+                        <i class="bi bi-images"></i> View Gallery Instead
+                    </a>
+                {% endif %}
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="d-flex flex-column align-items-center justify-content-center text-white">
+            <i class="bi bi-camera-video-off fs-1 mb-3"></i>
+            <h3>Live View Disabled</h3>
+            <p class="text-muted">Live streaming is not enabled for this camera.</p>
+            {% if camera.galleryEnabled %}
+                <a href="{{ path('camera_gallery', {building_slug: building.slug, camera_id: camera.id}) }}" 
+                   class="btn btn-primary">
+                    <i class="bi bi-images"></i> View Gallery Instead
+                </a>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+
+<!-- Camera Info Overlay -->
+<div class="position-fixed bottom-0 start-0 m-3" style="z-index: 1050;">
+    <div class="card bg-dark text-white border-0" style="opacity: 0.9;">
+        <div class="card-body p-2">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-camera text-primary"></i>
+                </div>
+                <div>
+                    <div class="fw-bold small">{{ camera.name }}</div>
+                    <div class="text-muted" style="font-size: 0.75em;">
+                        {% if camera.lastSnapshotAt %}
+                            Last snapshot: {{ camera.lastSnapshotAt|date('M j, H:i') }}
+                        {% else %}
+                            No snapshots yet
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="position-fixed bottom-0 end-0 m-3" style="z-index: 1050;">
+    <div class="btn-group-vertical" role="group">
+        {% if camera.galleryEnabled %}
+            <a href="{{ path('camera_gallery', {building_slug: building.slug, camera_id: camera.id}) }}" 
+               class="btn btn-primary btn-sm" title="View Gallery">
+                <i class="bi bi-images"></i>
+            </a>
+        {% endif %}
+        
+        <button class="btn btn-secondary btn-sm" onclick="toggleFullscreen()" title="Toggle Fullscreen">
+            <i class="bi bi-fullscreen"></i>
+        </button>
+        
+        <button class="btn btn-success btn-sm" onclick="window.location.reload()" title="Refresh">
+            <i class="bi bi-arrow-clockwise"></i>
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- HLS.js for better HLS support -->
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+<script>
+// Initialize HLS player if needed
+document.addEventListener('DOMContentLoaded', function() {
+    const video = document.getElementById('video-player');
+    if (!video) return;
+    
+    const src = video.querySelector('source').src;
+    
+    if (src.includes('.m3u8')) {
+        if (Hls.isSupported()) {
+            const hls = new Hls({
+                enableWorker: false,
+                lowLatencyMode: true,
+                backBufferLength: 90
+            });
+            
+            hls.loadSource(src);
+            hls.attachMedia(video);
+            
+            hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                console.log('HLS stream loaded successfully');
+            });
+            
+            hls.on(Hls.Events.ERROR, function(event, data) {
+                console.error('HLS error:', data);
+                if (data.fatal) {
+                    // Try to recover
+                    if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                        hls.startLoad();
+                    } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+                        hls.recoverMediaError();
+                    }
+                }
+            });
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            // Native HLS support (Safari)
+            video.src = src;
+        }
+    }
+});
+
+function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        }
+    }
+}
+
+// Handle fullscreen changes
+document.addEventListener('fullscreenchange', function() {
+    const btn = document.querySelector('[onclick="toggleFullscreen()"] i');
+    if (btn) {
+        if (document.fullscreenElement) {
+            btn.className = 'bi bi-fullscreen-exit';
+        } else {
+            btn.className = 'bi bi-fullscreen';
+        }
+    }
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    switch(e.key) {
+        case 'f':
+        case 'F':
+            if (e.ctrlKey || e.metaKey) return;
+            toggleFullscreen();
+            e.preventDefault();
+            break;
+        case 'g':
+        case 'G':
+            {% if camera.galleryEnabled %}
+            window.location.href = '{{ path('camera_gallery', {building_slug: building.slug, camera_id: camera.id}) }}';
+            {% endif %}
+            e.preventDefault();
+            break;
+        case 'r':
+        case 'R':
+            if (e.ctrlKey || e.metaKey) return;
+            window.location.reload();
+            e.preventDefault();
+            break;
+    }
+});
+</script>
+{% endblock %}

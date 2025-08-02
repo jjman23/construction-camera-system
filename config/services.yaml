@@ -1,0 +1,33 @@
+# config/services.yaml
+parameters:
+    # Updated for Ubuntu path structure
+    app.camera_images_path: '/var/www/construction-cameras/public/images'
+    app.camera.ffmpeg_path: '/usr/bin/ffmpeg'
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        public: false
+
+    # Make classes in src/ available as services
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/Entity/'
+            - '../src/Kernel.php'
+
+    # Snapshot service
+    App\Service\SnapshotService:
+        public: true
+        arguments:
+            $imagesBasePath: '%app.camera_images_path%'
+            $ffmpegPath: '%app.camera.ffmpeg_path%'
+
+    # Controllers
+    App\Controller\AdminController:
+        public: true
+
+    App\Controller\LoginController:
+        public: true

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}UBC Properties Trust Construction Cameras{% endblock %}</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <style>
+        :root {
+            --sidebar-width: 250px;
+            --header-height: 80px;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c5aa0 0%, #1e3a5f 100%);
+            color: white;
+            height: var(--header-height);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .sidebar {
+            position: fixed;
+            top: var(--header-height);
+            left: 0;
+            width: var(--sidebar-width);
+            height: calc(100vh - var(--header-height));
+            background: #f8f9fa;
+            border-right: 1px solid #dee2e6;
+            overflow-y: auto;
+            z-index: 999;
+            transition: transform 0.3s ease;
+        }
+        
+        .main-content {
+            margin-left: var(--sidebar-width);
+            margin-top: var(--header-height);
+            min-height: calc(100vh - var(--header-height));
+            background: #000;
+        }
+        
+        .nav-link {
+            color: #495057;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin: 2px 10px;
+            transition: all 0.2s;
+        }
+        
+        .nav-link:hover {
+            background: #e9ecef;
+            color: #2c5aa0;
+        }
+        
+        .nav-link.active {
+            background: #2c5aa0;
+            color: white;
+        }
+        
+        .video-container {
+            position: relative;
+            width: 100%;
+            height: calc(100vh - var(--header-height));
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .video-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        .gallery-container {
+            padding: 20px;
+            background: white;
+            min-height: calc(100vh - var(--header-height));
+        }
+        
+        .copyright-notice {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            right: var(--sidebar-width);
+            background: rgba(220, 53, 69, 0.9);
+            color: white;
+            padding: 8px 15px;
+            font-size: 0.8em;
+            text-align: center;
+            border-radius: 5px;
+            z-index: 1001;
+        }
+        
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .copyright-notice {
+                right: 10px;
+                position: relative;
+                margin: 10px;
+            }
+        }
+        
+        .mobile-menu-btn {
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .mobile-menu-btn {
+                display: block;
+            }
+        }
+        
+        /* Camera thumbnails in sidebar */
+        .camera-thumb {
+            width: 60px;
+            height: 40px;
+            object-fit: cover;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+        
+        .building-section {
+            border-bottom: 1px solid #dee2e6;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+        }
+        
+        .building-title {
+            font-weight: 600;
+            color: #2c5aa0;
+            padding: 10px 20px;
+            margin: 0;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+    </style>
+    
+    {% block styles %}{% endblock %}
+</head>
+<body>
+    <!-- Header -->
+    <header class="header d-flex align-items-center">
+        <div class="container-fluid">
+            <div class="row align-items-center w-100">
+                <div class="col-auto">
+                    <button class="btn btn-link text-white mobile-menu-btn p-2" type="button" onclick="toggleSidebar()">
+                        <i class="bi bi-list fs-4"></i>
+                    </button>
+                </div>
+                
+                <div class="col">
+                    <h1 class="h4 mb-0">UBC Properties Trust Construction Cameras</h1>
+                    {% if building is defined %}
+                        <small class="text-light">{{ building.name }}{% if camera is defined %} - {{ camera.name }}{% endif %}</small>
+                    {% endif %}
+                </div>
+                
+                <div class="col-auto">
+                    {% if camera is defined and camera.galleryEnabled %}
+                        <div class="input-group" style="width: 200px;">
+                            <input type="date" 
+                                   id="gallery-date-picker" 
+                                   class="form-control form-control-sm"
+                                   value="{{ 'now'|date('Y-m-d') }}"
+                                   onchange="goToGalleryDate()">
+                            <button class="btn btn-outline-light btn-sm" type="button" onclick="goToGalleryDate()">
+                                <i class="bi bi-calendar"></i>
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="col-auto">
+                    <img src="{{ asset('resources/ubcpt_logo.gif') }}" alt="UBCPT" class="img-fluid" style="max-height: 40px;">
+                    <img src="{{ asset('resources/ubc_it_logo.jpg') }}" alt="UBC IT" class="img-fluid ms-2" style="max-height: 40px;">
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar" id="sidebar">
+        <div class="p-3">
+            {% block navigation %}
+                {% set buildings = get_all_buildings() %}
+                {% for nav_building in buildings %}
+                    {% if nav_building.activeCameras|length > 0 %}
+                        <div class="building-section">
+                            <div class="building-title">{{ nav_building.name }}</div>
+                            {% for nav_camera in nav_building.activeCameras %}
+                                {% if nav_camera.liveEnabled %}
+                                    <a href="{{ path('camera_live', {building_slug: nav_building.slug, camera_id: nav_camera.id}) }}" 
+                                       class="nav-link d-flex align-items-center {{ (camera is defined and camera.id == nav_camera.id) ? 'active' : '' }}">
+                                        <div class="flex-grow-1">
+                                            <div class="fw-medium">{{ nav_camera.name }}</div>
+                                            <small class="text-muted">
+                                                {% if nav_camera.lastSnapshotAt %}
+                                                    Last: {{ nav_camera.lastSnapshotAt|date('H:i') }}
+                                                {% else %}
+                                                    No snapshots yet
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                        {% if nav_camera.galleryEnabled %}
+                                            <a href="{{ path('camera_gallery', {building_slug: nav_building.slug, camera_id: nav_camera.id}) }}" 
+                                               class="btn btn-sm btn-outline-secondary ms-2"
+                                               onclick="event.stopPropagation();"
+                                               title="Gallery">
+                                                <i class="bi bi-images"></i>
+                                            </a>
+                                        {% endif %}
+                                    </a>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            {% endblock %}
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Copyright Notice -->
+    <div class="copyright-notice">
+        These photos are the property of UBC Properties Trust and may not be used without express written consent.
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('show');
+        }
+        
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(e) {
+            if (window.innerWidth <= 768) {
+                const sidebar = document.getElementById('sidebar');
+                const menuBtn = document.querySelector('.mobile-menu-btn');
+                
+                if (!sidebar.contains(e.target) && !menuBtn.contains(e.target)) {
+                    sidebar.classList.remove('show');
+                }
+            }
+        });
+        
+        function goToGalleryDate() {
+            const datePicker = document.getElementById('gallery-date-picker');
+            const selectedDate = datePicker.value.replace(/-/g, ''); // Convert YYYY-MM-DD to YYYYMMDD
+            
+            {% if camera is defined and building is defined %}
+            const baseUrl = '{{ path('camera_gallery', {building_slug: building.slug, camera_id: camera.id}) }}';
+            window.location.href = baseUrl + '/' + selectedDate;
+            {% endif %}
+        }
+        
+        // Auto-refresh live view every 5 minutes
+        {% if camera is defined and 'live' in app.request.get('_route') %}
+        setInterval(function() {
+            window.location.reload();
+        }, 300000); // 5 minutes
+        {% endif %}
+    </script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,301 @@
+{% extends "admin/base.html.twig" %}
+
+{% block title %}{{ is_edit ? 'Edit' : 'Add' }} Camera - Construction Camera Admin{% endblock %}
+{% block page_title %}{{ is_edit ? 'Edit Camera' : 'Add New Camera' }}{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ path('admin_cameras') }}" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Cameras
+    </a>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <form method="post">
+            <div class="row">
+                <!-- Basic Information -->
+                <div class="col-lg-6">
+                    <div class="card shadow mb-4">
+                        <div class="card-header">
+                            <h6 class="m-0 font-weight-bold text-primary">
+                                <i class="bi bi-info-circle"></i> Basic Information
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="building_id" class="form-label">
+                                    <i class="bi bi-building"></i> Building <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-control" id="building_id" name="building_id" required>
+                                    <option value="">Select a building...</option>
+                                    {% for building in buildings %}
+                                    <option value="{{ building.id }}" 
+                                            {{ (is_edit and camera.building.id == building.id) ? 'selected' : '' }}>
+                                        {{ building.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="name" class="form-label">
+                                    <i class="bi bi-camera"></i> Camera Name <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="name" 
+                                       name="name" 
+                                       value="{{ is_edit ? camera.name : '' }}" 
+                                       required
+                                       placeholder="e.g., Gateway Main Camera">
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="description" class="form-label">
+                                    <i class="bi bi-card-text"></i> Description
+                                </label>
+                                <textarea class="form-control" 
+                                          id="description" 
+                                          name="description" 
+                                          rows="3"
+                                          placeholder="Optional description">{{ is_edit ? camera.description : '' }}</textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="rtsp_url" class="form-label">
+                                    <i class="bi bi-link-45deg"></i> RTSP URL <span class="text-danger">*</span>
+                                </label>
+                                <input type="url" 
+                                       class="form-control" 
+                                       id="rtsp_url" 
+                                       name="rtsp_url" 
+                                       value="{{ is_edit ? camera.rtspUrl : '' }}" 
+                                       required
+                                       placeholder="rtsp://username:password@ip:port/stream">
+                                <div class="form-text">Full RTSP stream URL including credentials</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="display_order" class="form-label">
+                                    <i class="bi bi-sort-numeric-up"></i> Display Order
+                                </label>
+                                <input type="number" 
+                                       class="form-control" 
+                                       id="display_order" 
+                                       name="display_order" 
+                                       value="{{ is_edit ? camera.displayOrder : 0 }}" 
+                                       min="0">
+                                <div class="form-text">Order within the building (lower numbers first)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Snapshot Settings -->
+                <div class="col-lg-6">
+                    <div class="card shadow mb-4">
+                        <div class="card-header">
+                            <h6 class="m-0 font-weight-bold text-success">
+                                <i class="bi bi-camera-fill"></i> Snapshot Settings
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           id="snapshot_enabled" 
+                                           name="snapshot_enabled" 
+                                           value="1"
+                                           {{ (not is_edit or camera.snapshotEnabled) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="snapshot_enabled">
+                                        <strong>Enable Snapshots</strong>
+                                    </label>
+                                </div>
+                                <div class="form-text">Take periodic snapshots from this camera</div>
+                            </div>
+
+                            <div id="snapshot-settings" class="{{ (is_edit and not camera.snapshotEnabled) ? 'd-none' : '' }}">
+                                <div class="mb-3">
+                                    <label for="snapshot_interval" class="form-label">
+                                        <i class="bi bi-clock"></i> Snapshot Interval (seconds)
+                                    </label>
+                                    <select class="form-control" id="snapshot_interval" name="snapshot_interval">
+                                        <option value="60" {{ (is_edit and camera.snapshotInterval == 60) ? 'selected' : '' }}>1 minute</option>
+                                        <option value="300" {{ (not is_edit or camera.snapshotInterval == 300) ? 'selected' : '' }}>5 minutes</option>
+                                        <option value="600" {{ (is_edit and camera.snapshotInterval == 600) ? 'selected' : '' }}>10 minutes</option>
+                                        <option value="900" {{ (is_edit and camera.snapshotInterval == 900) ? 'selected' : '' }}>15 minutes</option>
+                                        <option value="1800" {{ (is_edit and camera.snapshotInterval == 1800) ? 'selected' : '' }}>30 minutes</option>
+                                        <option value="3600" {{ (is_edit and camera.snapshotInterval == 3600) ? 'selected' : '' }}>1 hour</option>
+                                    </select>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="mb-3">
+                                            <label for="start_time" class="form-label">
+                                                <i class="bi bi-sunrise"></i> Start Time
+                                            </label>
+                                            <input type="time" 
+                                                   class="form-control" 
+                                                   id="start_time" 
+                                                   name="start_time" 
+                                                   value="{{ is_edit ? camera.startTime|date('H:i') : '05:00' }}">
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="mb-3">
+                                            <label for="stop_time" class="form-label">
+                                                <i class="bi bi-sunset"></i> Stop Time
+                                            </label>
+                                            <input type="time" 
+                                                   class="form-control" 
+                                                   id="stop_time" 
+                                                   name="stop_time" 
+                                                   value="{{ is_edit ? camera.stopTime|date('H:i') : '22:00' }}">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-text">Snapshots will only be taken during these hours</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Display Settings -->
+                    <div class="card shadow mb-4">
+                        <div class="card-header">
+                            <h6 class="m-0 font-weight-bold text-info">
+                                <i class="bi bi-eye"></i> Display Settings
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           id="live_enabled" 
+                                           name="live_enabled" 
+                                           value="1"
+                                           {{ (not is_edit or camera.liveEnabled) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="live_enabled">
+                                        <strong>Enable Live View</strong>
+                                    </label>
+                                </div>
+                                <div class="form-text">Show live stream on public pages</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           id="gallery_enabled" 
+                                           name="gallery_enabled" 
+                                           value="1"
+                                           {{ (not is_edit or camera.galleryEnabled) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="gallery_enabled">
+                                        <strong>Enable Gallery</strong>
+                                    </label>
+                                </div>
+                                <div class="form-text">Show snapshot gallery on public pages</div>
+                            </div>
+
+                            {% if is_edit %}
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           id="active" 
+                                           name="active" 
+                                           value="1"
+                                           {{ camera.active ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="active">
+                                        <strong>Camera Active</strong>
+                                    </label>
+                                </div>
+                                <div class="form-text">Inactive cameras are hidden from public view</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ path('admin_cameras') }}" class="btn btn-secondary">
+                            <i class="bi bi-x"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-{{ is_edit ? 'check' : 'plus' }}"></i> 
+                            {{ is_edit ? 'Update Camera' : 'Create Camera' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        {% if is_edit %}
+        <!-- Camera Status -->
+        <div class="card shadow mt-4">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold text-warning">
+                    <i class="bi bi-info-circle"></i> Camera Status
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>Last Snapshot:</strong>
+                        {% if camera.lastSnapshotAt %}
+                            {{ camera.lastSnapshotAt|date('Y-m-d H:i:s') }}
+                        {% else %}
+                            <em>Never</em>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Status:</strong>
+                        {% if camera.lastSnapshotStatus == 'success' %}
+                            <span class="badge bg-success">{{ camera.lastSnapshotStatus }}</span>
+                        {% elseif camera.lastSnapshotStatus == 'failed' %}
+                            <span class="badge bg-danger">{{ camera.lastSnapshotStatus }}</span>
+                        {% else %}
+                            <span class="badge bg-secondary">{{ camera.lastSnapshotStatus }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                {% if camera.snapshotEnabled %}
+                <div class="mt-3">
+                    <form method="post" action="{{ path('admin_manual_snapshot', {id: camera.id}) }}" style="display: inline;">
+                        <button type="submit" class="btn btn-success" onclick="return confirm('Take a manual snapshot now?')">
+                            <i class="bi bi-camera"></i> Take Manual Snapshot
+                        </button>
+                    </form>
+                    <a href="/view/{{ camera.building.slug }}/{{ camera.id }}" 
+                       class="btn btn-info" 
+                       target="_blank">
+                        <i class="bi bi-eye"></i> View Live Stream
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Toggle snapshot settings visibility
+document.getElementById('snapshot_enabled').addEventListener('change', function() {
+    const settingsDiv = document.getElementById('snapshot-settings');
+    if (this.checked) {
+        settingsDiv.classList.remove('d-none');
+    } else {
+        settingsDiv.classList.add('d-none');
+    }
+});
+</script>
+{% endblock %}

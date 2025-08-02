@@ -1,0 +1,304 @@
+{% extends "camera_base.html.twig" %}
+
+{% block title %}{{ camera.name }} Gallery - {{ date|slice(0,4) }}-{{ date|slice(4,2) }}-{{ date|slice(6,2) }}{% endblock %}
+
+{% block styles %}
+<style>
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+    padding: 20px;
+}
+
+.gallery-item {
+    position: relative;
+    background: #f8f9fa;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.gallery-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+
+.gallery-item img {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+}
+
+.gallery-item-time {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(0,0,0,0.8));
+    color: white;
+    padding: 20px 10px 8px;
+    font-size: 0.8em;
+    text-align: center;
+}
+
+.modal-image {
+    max-width: 100%;
+    max-height: 80vh;
+    object-fit: contain;
+}
+
+.empty-gallery {
+    text-align: center;
+    padding: 60px 20px;
+    color: #6c757d;
+}
+
+.gallery-controls {
+    background: white;
+    border-bottom: 1px solid #dee2e6;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.date-nav {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.stats-info {
+    color: #6c757d;
+    font-size: 0.9em;
+}
+
+@media (max-width: 768px) {
+    .gallery-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 10px;
+        padding: 15px;
+    }
+    
+    .gallery-controls {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="gallery-container">
+    <!-- Gallery Controls -->
+    <div class="gallery-controls">
+        <div class="date-nav">
+            <h4 class="mb-0">{{ camera.name }} Gallery</h4>
+            <span class="badge bg-primary">{{ date|slice(4,2) }}/{{ date|slice(6,2) }}/{{ date|slice(0,4) }}</span>
+        </div>
+        
+        <div class="d-flex align-items-center gap-3">
+            <div class="stats-info">
+                {% if images|length > 0 %}
+                    {{ images|length }} image{{ images|length != 1 ? 's' : '' }}
+                {% else %}
+                    No images
+                {% endif %}
+            </div>
+            
+            <div class="btn-group" role="group">
+                <a href="{{ path('camera_live', {building_slug: building.slug, camera_id: camera.id}) }}" 
+                   class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-camera-video"></i> Live View
+                </a>
+                
+                <button class="btn btn-outline-secondary btn-sm" onclick="refreshGallery()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gallery Grid -->
+    {% if images|length > 0 %}
+        <div class="gallery-grid">
+            {% for filename, imagePath in images %}
+                {% set thumbnailPath = thumbnails[filename] ?? imagePath %}
+                {% set imageTime = filename|slice(5, 6) %}
+                {% set displayTime = imageTime|slice(0, 2) ~ ':' ~ imageTime|slice(2, 2) ~ ':' ~ imageTime|slice(4, 2) %}
+                
+                <div class="gallery-item" 
+                     onclick="openModal('{{ asset(imagePath) }}', '{{ displayTime }}', '{{ filename }}')"
+                     data-bs-toggle="tooltip" 
+                     title="Click to view full size">
+                    <img src="{{ asset(thumbnailPath) }}" 
+                         alt="Snapshot at {{ displayTime }}"
+                         loading="lazy">
+                    <div class="gallery-item-time">{{ displayTime }}</div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-gallery">
+            <i class="bi bi-images fs-1 mb-3"></i>
+            <h5>No Images Available</h5>
+            <p class="mb-3">No snapshots were taken on this date.</p>
+            
+            {% if date == 'now'|date('Ymd') %}
+                <div class="alert alert-info d-inline-block">
+                    <i class="bi bi-info-circle"></i>
+                    Snapshots are taken automatically during construction hours 
+                    ({{ camera.startTime|date('H:i') }} - {{ camera.stopTime|date('H:i') }}).
+                </div>
+            {% endif %}
+            
+            <div class="mt-3">
+                <a href="{{ path('camera_live', {building_slug: building.slug, camera_id: camera.id}) }}" 
+                   class="btn btn-primary">
+                    <i class="bi bi-camera-video"></i> View Live Stream
+                </a>
+                
+                <button class="btn btn-outline-secondary ms-2" onclick="goToToday()">
+                    <i class="bi bi-calendar-today"></i> Today's Gallery
+                </button>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Image Modal -->
+<div class="modal fade" id="imageModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content bg-dark text-white">
+            <div class="modal-header border-0">
+                <h5 class="modal-title" id="modalTitle">Snapshot Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center p-0">
+                <img id="modalImage" src="" alt="" class="modal-image">
+            </div>
+            <div class="modal-footer border-0 justify-content-between">
+                <div id="modalInfo" class="text-muted"></div>
+                <div>
+                    <button class="btn btn-outline-light btn-sm" onclick="downloadImage()">
+                        <i class="bi bi-download"></i> Download
+                    </button>
+                    <button class="btn btn-outline-light btn-sm" onclick="previousImage()">
+                        <i class="bi bi-chevron-left"></i> Previous
+                    </button>
+                    <button class="btn btn-outline-light btn-sm" onclick="nextImage()">
+                        <i class="bi bi-chevron-right"></i> Next
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentImageIndex = 0;
+let allImages = [];
+
+// Initialize images array
+{% if images|length > 0 %}
+allImages = [
+    {% for filename, imagePath in images %}
+    {
+        src: '{{ asset(imagePath) }}',
+        filename: '{{ filename }}',
+        time: '{{ filename|slice(5, 6)|slice(0, 2) ~ ":" ~ filename|slice(5, 6)|slice(2, 2) ~ ":" ~ filename|slice(5, 6)|slice(4, 2) }}'
+    }{{ not loop.last ? ',' : '' }}
+    {% endfor %}
+];
+{% endif %}
+
+function openModal(imageSrc, time, filename) {
+    // Find the current image index
+    currentImageIndex = allImages.findIndex(img => img.src === imageSrc);
+    
+    document.getElementById('modalImage').src = imageSrc;
+    document.getElementById('modalTitle').textContent = `Snapshot at ${time}`;
+    document.getElementById('modalInfo').textContent = `${filename} (${currentImageIndex + 1} of ${allImages.length})`;
+    
+    new bootstrap.Modal(document.getElementById('imageModal')).show();
+}
+
+function previousImage() {
+    if (allImages.length === 0) return;
+    
+    currentImageIndex = (currentImageIndex - 1 + allImages.length) % allImages.length;
+    updateModalImage();
+}
+
+function nextImage() {
+    if (allImages.length === 0) return;
+    
+    currentImageIndex = (currentImageIndex + 1) % allImages.length;
+    updateModalImage();
+}
+
+function updateModalImage() {
+    const img = allImages[currentImageIndex];
+    document.getElementById('modalImage').src = img.src;
+    document.getElementById('modalTitle').textContent = `Snapshot at ${img.time}`;
+    document.getElementById('modalInfo').textContent = `${img.filename} (${currentImageIndex + 1} of ${allImages.length})`;
+}
+
+function downloadImage() {
+    if (allImages.length === 0) return;
+    
+    const img = allImages[currentImageIndex];
+    const link = document.createElement('a');
+    link.href = img.src;
+    link.download = img.filename;
+    link.click();
+}
+
+function refreshGallery() {
+    window.location.reload();
+}
+
+function goToToday() {
+    window.location.href = '{{ path('camera_gallery', {building_slug: building.slug, camera_id: camera.id}) }}';
+}
+
+// Keyboard navigation
+document.addEventListener('keydown', function(e) {
+    const modal = bootstrap.Modal.getInstance(document.getElementById('imageModal'));
+    if (!modal || !modal._isShown) return;
+    
+    switch(e.key) {
+        case 'ArrowLeft':
+            previousImage();
+            e.preventDefault();
+            break;
+        case 'ArrowRight':
+            nextImage();
+            e.preventDefault();
+            break;
+        case 'Escape':
+            modal.hide();
+            e.preventDefault();
+            break;
+    }
+});
+
+// Initialize tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltips.forEach(tooltip => new bootstrap.Tooltip(tooltip));
+});
+
+// Auto-refresh every 5 minutes if viewing today's gallery
+{% if date == 'now'|date('Ymd') %}
+setInterval(refreshGallery, 300000); // 5 minutes
+{% endif %}
+</script>
+{% endblock %}

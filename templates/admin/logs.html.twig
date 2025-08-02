@@ -1,0 +1,291 @@
+{% extends "admin/base.html.twig" %}
+
+{% block title %}Snapshot Logs - Construction Camera Admin{% endblock %}
+{% block page_title %}Snapshot Logs{% endblock %}
+
+{% block page_actions %}
+    <div class="btn-group" role="group">
+        <a href="{{ path('admin_logs') }}" class="btn btn-outline-secondary {{ app.request.query.get('status') is empty ? 'active' : '' }}">
+            All Logs
+        </a>
+        <a href="{{ path('admin_logs') }}?status=success" class="btn btn-outline-success {{ app.request.query.get('status') == 'success' ? 'active' : '' }}">
+            Success
+        </a>
+        <a href="{{ path('admin_logs') }}?status=failed" class="btn btn-outline-danger {{ app.request.query.get('status') == 'failed' ? 'active' : '' }}">
+            Failed
+        </a>
+        <a href="{{ path('admin_logs') }}?status=skipped" class="btn btn-outline-warning {{ app.request.query.get('status') == 'skipped' ? 'active' : '' }}">
+            Skipped
+        </a>
+    </div>
+{% endblock %}
+
+{% block content %}
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">Total Logs</h6>
+                        <h3>{{ totalLogs }}</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-journal-text fs-2"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">Successful</h6>
+                        <h3>{{ logs|filter(l => l.status == 'success')|length }}</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-check-circle fs-2"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">Failed</h6>
+                        <h3>{{ logs|filter(l => l.status == 'failed')|length }}</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-x-circle fs-2"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">Skipped</h6>
+                        <h3>{{ logs|filter(l => l.status == 'skipped')|length }}</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-clock fs-2"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Logs Table -->
+<div class="card shadow">
+    <div class="card-header">
+        <h6 class="m-0 font-weight-bold text-primary">
+            <i class="bi bi-journal-text"></i> Recent Snapshot Logs
+            {% if app.request.query.get('status') %}
+                - {{ app.request.query.get('status')|title }} Only
+            {% endif %}
+        </h6>
+    </div>
+    <div class="card-body">
+        {% if logs|length > 0 %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Camera</th>
+                            <th>Building</th>
+                            <th>Status</th>
+                            <th>Time</th>
+                            <th>Duration</th>
+                            <th>File Size</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td>
+                                <strong>{{ log.camera.name }}</strong>
+                                {% if log.camera.id %}
+                                    <br>
+                                    <small class="text-muted">ID: {{ log.camera.id }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ log.camera.building.name }}
+                                <br>
+                                <small class="text-muted">{{ log.camera.building.slug }}</small>
+                            </td>
+                            <td>
+                                {% if log.status == 'success' %}
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-check-circle"></i> Success
+                                    </span>
+                                {% elseif log.status == 'failed' %}
+                                    <span class="badge bg-danger">
+                                        <i class="bi bi-x-circle"></i> Failed
+                                    </span>
+                                {% elseif log.status == 'skipped' %}
+                                    <span class="badge bg-warning">
+                                        <i class="bi bi-clock"></i> Skipped
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ log.status|title }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>{{ log.attemptedAt|date('M j, H:i:s') }}</strong>
+                                <br>
+                                <small class="text-muted">{{ log.attemptedAt|date('Y') }}</small>
+                            </td>
+                            <td>
+                                {% if log.executionTimeMs %}
+                                    <span class="badge bg-info">{{ log.formattedExecutionTime }}</span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if log.fileSize %}
+                                    <span class="badge bg-secondary">{{ log.formattedFileSize }}</span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if log.filePath %}
+                                    <small class="text-success">
+                                        <i class="bi bi-file-earmark-image"></i> 
+                                        {{ log.filePath|split('/')|last }}
+                                    </small>
+                                    <br>
+                                {% endif %}
+                                
+                                {% if log.errorMessage %}
+                                    <button class="btn btn-sm btn-outline-danger" 
+                                            type="button" 
+                                            data-bs-toggle="collapse" 
+                                            data-bs-target="#error-{{ log.id }}"
+                                            title="Show Error">
+                                        <i class="bi bi-exclamation-triangle"></i> Error
+                                    </button>
+                                    <div class="collapse mt-2" id="error-{{ log.id }}">
+                                        <div class="card card-body bg-light">
+                                            <small class="text-danger">{{ log.errorMessage }}</small>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                                
+                                {% if log.filePath and log.status == 'success' %}
+                                    <a href="{{ asset('images/' ~ log.filePath) }}" 
+                                       class="btn btn-sm btn-outline-primary" 
+                                       target="_blank"
+                                       title="View Image">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if totalPages > 1 %}
+                <nav aria-label="Logs pagination" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if currentPage > 1 %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ path('admin_logs') }}?page={{ currentPage - 1 }}{{ app.request.query.get('status') ? '&status=' ~ app.request.query.get('status') : '' }}">
+                                    <i class="bi bi-chevron-left"></i> Previous
+                                </a>
+                            </li>
+                        {% endif %}
+
+                        {% for page in 1..totalPages %}
+                            {% if page == currentPage %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page }}</span>
+                                </li>
+                            {% elseif page >= currentPage - 2 and page <= currentPage + 2 %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ path('admin_logs') }}?page={{ page }}{{ app.request.query.get('status') ? '&status=' ~ app.request.query.get('status') : '' }}">
+                                        {{ page }}
+                                    </a>
+                                </li>
+                            {% elseif page == 1 or page == totalPages %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ path('admin_logs') }}?page={{ page }}{{ app.request.query.get('status') ? '&status=' ~ app.request.query.get('status') : '' }}">
+                                        {{ page }}
+                                    </a>
+                                </li>
+                                {% if (page == 1 and currentPage > 4) or (page == totalPages and currentPage < totalPages - 3) %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">...</span>
+                                    </li>
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if currentPage < totalPages %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ path('admin_logs') }}?page={{ currentPage + 1 }}{{ app.request.query.get('status') ? '&status=' ~ app.request.query.get('status') : '' }}">
+                                    Next <i class="bi bi-chevron-right"></i>
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-journal-text fs-1 text-muted"></i>
+                <h5 class="mt-3 text-muted">No Logs Found</h5>
+                {% if app.request.query.get('status') %}
+                    <p class="text-muted">No {{ app.request.query.get('status') }} logs found.</p>
+                    <a href="{{ path('admin_logs') }}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> View All Logs
+                    </a>
+                {% else %}
+                    <p class="text-muted">Snapshot logs will appear here once the background service starts taking snapshots.</p>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if logs|length > 0 %}
+<div class="mt-4">
+    <div class="card">
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-6">
+                    <h6 class="text-muted">Showing</h6>
+                    <h4>{{ logs|length }} of {{ totalLogs }}</h4>
+                    <small class="text-muted">total logs</small>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="text-muted">Page</h6>
+                    <h4>{{ currentPage }} of {{ totalPages }}</h4>
+                    <small class="text-muted">pages</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
