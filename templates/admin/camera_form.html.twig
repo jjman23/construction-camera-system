@@ -73,7 +73,20 @@
                                        value="{{ is_edit ? camera.rtspUrl : '' }}" 
                                        required
                                        placeholder="rtsp://username:password@ip:port/stream">
-                                <div class="form-text">Full RTSP stream URL including credentials</div>
+                                <div class="form-text">Full RTSP stream URL for snapshot capture (includes credentials)</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="live_stream_url" class="form-label">
+                                    <i class="bi bi-play-circle"></i> Live Stream URL
+                                </label>
+                                <input type="url" 
+                                       class="form-control" 
+                                       id="live_stream_url" 
+                                       name="live_stream_url" 
+                                       value="{{ is_edit ? camera.liveStreamUrl : '' }}" 
+                                       placeholder="http://camera-ip/live.html or http://camera-ip/stream.m3u8">
+                                <div class="form-text">Public-facing live stream URL (.html player or .m3u8 stream)</div>
                             </div>
 
                             <div class="mb-3">

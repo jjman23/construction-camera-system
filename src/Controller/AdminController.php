@@ -126,7 +126,11 @@ class AdminController extends AbstractController
             $camera->setBuilding($building);
             $camera->setName($request->request->get('name'));
             $camera->setDescription($request->request->get('description'));
+            
+            // FIXED: Handle both URL fields separately
             $camera->setRtspUrl($request->request->get('rtsp_url'));
+            $camera->setLiveStreamUrl($request->request->get('live_stream_url'));
+            
             $camera->setSnapshotEnabled((bool)$request->request->get('snapshot_enabled'));
             $camera->setSnapshotInterval((int)$request->request->get('snapshot_interval', 300));
             $camera->setStartTime(new \DateTime($request->request->get('start_time', '05:00:00')));
@@ -162,7 +166,11 @@ class AdminController extends AbstractController
             $camera->setBuilding($building);
             $camera->setName($request->request->get('name'));
             $camera->setDescription($request->request->get('description'));
+            
+            // FIXED: Handle both URL fields separately
             $camera->setRtspUrl($request->request->get('rtsp_url'));
+            $camera->setLiveStreamUrl($request->request->get('live_stream_url'));
+            
             $camera->setSnapshotEnabled((bool)$request->request->get('snapshot_enabled'));
             $camera->setSnapshotInterval((int)$request->request->get('snapshot_interval'));
             $camera->setStartTime(new \DateTime($request->request->get('start_time')));

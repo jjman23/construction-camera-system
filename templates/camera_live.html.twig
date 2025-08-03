@@ -5,13 +5,13 @@
 {% block content %}
 <div class="video-container">
     {% if camera.liveEnabled %}
-        {% if camera.rtspUrl %}
-            <iframe src="{{ camera.rtspUrl }}" allowfullscreen="true"></iframe>
+        {% if camera.liveStreamUrl %}
+            <iframe src="{{ camera.liveStreamUrl }}" allowfullscreen="true"></iframe>
         {% else %}
             <div class="d-flex flex-column align-items-center justify-content-center text-white">
                 <i class="bi bi-camera-video fs-1 mb-3"></i>
                 <h3>Live Stream Not Configured</h3>
-                <p class="text-muted">No stream URL has been configured for this camera.</p>
+                <p class="text-muted">No live stream URL has been configured for this camera.</p>
                 {% if camera.galleryEnabled %}
                     <a href="{{ path('camera_gallery', {building_slug: building.slug, camera_id: camera.id}) }}" 
                        class="btn btn-primary">
