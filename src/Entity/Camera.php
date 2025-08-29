@@ -305,7 +305,7 @@ class Camera
     /**
      * Check if current time is within construction hours
      */
-    public function isWithinConstructionHours(\DateTime $time = null): bool
+    public function isWithinConstructionHours(?\DateTime $time = null): bool
     {
         if ($time === null) {
             $time = new \DateTime();
