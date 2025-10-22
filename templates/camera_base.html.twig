@@ -11,9 +11,15 @@
     
     <style>
         :root {
-            --sidebar-width: 250px;
-            --header-height: 80px;
-        }
+			--sidebar-width: 250px;
+			--header-height: 80px;
+		}
+
+		@media (max-width: 768px) {
+			:root {
+				--header-height: 60px;
+			}
+		}
         
         body {
             margin: 0;
@@ -22,16 +28,23 @@
         }
         
         .header {
-            background: linear-gradient(135deg, #2c5aa0 0%, #1e3a5f 100%);
-            color: white;
-            height: var(--header-height);
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1000;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
+			background: linear-gradient(135deg, #2c5aa0 0%, #1e3a5f 100%);
+			color: white;
+			height: var(--header-height);
+			position: fixed;
+			top: 0;
+			left: 0;
+			right: 0;
+			z-index: 1000;
+			box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+			padding: 0 10px;
+		}
+
+		@media (max-width: 768px) {
+			.header {
+				padding: 0 5px;
+			}
+		}
         
         .sidebar {
             position: fixed;
@@ -60,6 +73,13 @@
             margin: 2px 10px;
             transition: all 0.2s;
         }
+		
+		@media (max-width: 768px) {
+			.nav-link {
+				padding: 15px 20px;
+				font-size: 16px;
+			}
+		}
         
         .nav-link:hover {
             background: #e9ecef;
@@ -108,35 +128,44 @@
         }
         
         /* Mobile responsive */
-        @media (max-width: 768px) {
-            .sidebar {
-                transform: translateX(-100%);
-            }
-            
-            .sidebar.show {
-                transform: translateX(0);
-            }
-            
-            .main-content {
-                margin-left: 0;
-            }
-            
-            .copyright-notice {
-                right: 10px;
-                position: relative;
-                margin: 10px;
-            }
-        }
+		@media (max-width: 768px) {
+			.sidebar {
+				transform: translateX(-100%);
+				width: 280px;
+				box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+			}
+			
+			.sidebar.show {
+				transform: translateX(0);
+			}
+			
+			.main-content {
+				margin-left: 0;
+			}
+			
+			.copyright-notice {
+				right: 10px;
+				left: 10px;
+				font-size: 0.7em;
+				padding: 5px 10px;
+			}
+			
+			.video-container {
+				height: calc(100vh - var(--header-height));
+			}
+		}
         
         .mobile-menu-btn {
-            display: none;
-        }
-        
-        @media (max-width: 768px) {
-            .mobile-menu-btn {
-                display: block;
-            }
-        }
+			display: none;
+			padding: 8px !important;
+			margin: 0 !important;
+		}
+
+		@media (max-width: 768px) {
+			.mobile-menu-btn {
+				display: inline-block;
+			}
+		}
         
         /* Camera thumbnails in sidebar */
         .camera-thumb {
@@ -162,50 +191,59 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
+		
+		@media (max-width: 768px) {
+			.building-title {
+				padding: 12px 20px;
+				font-size: 0.85em;
+			}
+		}
     </style>
     
     {% block styles %}{% endblock %}
 </head>
 <body>
     <!-- Header -->
-    <header class="header d-flex align-items-center">
-        <div class="container-fluid">
-            <div class="row align-items-center w-100">
-                <div class="col-auto">
-                    <button class="btn btn-link text-white mobile-menu-btn p-2" type="button" onclick="toggleSidebar()">
-                        <i class="bi bi-list fs-4"></i>
-                    </button>
-                </div>
-                
-                <div class="col">
-                    <h1 class="h4 mb-0">UBC Properties Trust Construction Cameras</h1>
-                    {% if building is defined %}
-                        <small class="text-light">{{ building.name }}{% if camera is defined %} - {{ camera.name }}{% endif %}</small>
-                    {% endif %}
-                </div>
-                
-                <div class="col-auto">
-                    {% if camera is defined and camera.galleryEnabled %}
-                        <div class="input-group" style="width: 200px;">
-                            <input type="date" 
-                                   id="gallery-date-picker" 
-                                   class="form-control form-control-sm"
-                                   value="{{ 'now'|date('Y-m-d') }}"
-                                   onchange="goToGalleryDate()">
-                            <button class="btn btn-outline-light btn-sm" type="button" onclick="goToGalleryDate()">
-                                <i class="bi bi-calendar"></i>
-                            </button>
-                        </div>
-                    {% endif %}
-                </div>
-                
-                <div class="col-auto">
-                    <img src="{{ asset('resources/ubcpt_logo.gif') }}" alt="UBCPT" class="img-fluid" style="max-height: 40px;">
-                    <img src="{{ asset('resources/ubc_it_logo.jpg') }}" alt="UBC IT" class="img-fluid ms-2" style="max-height: 40px;">
-                </div>
-            </div>
-        </div>
-    </header>
+	<header class="header d-flex align-items-center">
+		<div class="container-fluid">
+			<div class="row align-items-center w-100">
+				<div class="col-auto">
+					<button class="btn btn-link text-white mobile-menu-btn p-2" type="button" onclick="toggleSidebar()">
+						<i class="bi bi-list fs-4"></i>
+					</button>
+				</div>
+				
+				<div class="col">
+					<h1 class="h4 mb-0 d-none d-md-block">UBC Properties Trust Construction Cameras</h1>
+					<h1 class="h6 mb-0 d-md-none">UBCPT Cameras</h1>
+					{% if building is defined %}
+						<small class="text-light d-none d-md-block">{{ building.name }}{% if camera is defined %} - {{ camera.name }}{% endif %}</small>
+						<small class="text-light d-md-none" style="font-size: 0.75rem;">{{ building.name }}</small>
+					{% endif %}
+				</div>
+				
+				{% if camera is defined and camera.galleryEnabled %}
+				<div class="col-auto d-none d-md-block">
+					<div class="input-group" style="width: 200px;">
+						<input type="date" 
+							   id="gallery-date-picker" 
+							   class="form-control form-control-sm"
+							   value="{{ 'now'|date('Y-m-d') }}"
+							   onchange="goToGalleryDate()">
+						<button class="btn btn-outline-light btn-sm" type="button" onclick="goToGalleryDate()">
+							<i class="bi bi-calendar"></i>
+						</button>
+					</div>
+				</div>
+				{% endif %}
+				
+				<div class="col-auto d-none d-lg-block">
+					<img src="{{ asset('resources/ubcpt_logo.gif') }}" alt="UBCPT" class="img-fluid" style="max-height: 40px;">
+					<img src="{{ asset('resources/ubc_it_logo.jpg') }}" alt="UBC IT" class="img-fluid ms-2" style="max-height: 40px;">
+				</div>
+			</div>
+		</div>
+	</header>
 
     <!-- Sidebar Navigation -->
     <nav class="sidebar" id="sidebar">
