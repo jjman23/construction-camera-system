@@ -105,7 +105,7 @@ class SnapshotCommand extends Command
                 // Run cleanup every 100 iterations (or roughly daily if interval is 60s)
                 if ($iteration % 100 === 0) {
                     $io->info('Running periodic cleanup...');
-                    $this->snapshotService->cleanupOldFiles();
+                    // $this->snapshotService->cleanupOldFiles();
                 }
 
             } catch (\Exception $e) {
