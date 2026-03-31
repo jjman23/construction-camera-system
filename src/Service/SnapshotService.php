@@ -118,7 +118,7 @@ class SnapshotService
             $this->ensureDirectoryExists($thumbnailDir);
 
             // Generate filenames
-            $timestamp = date('His');
+            $timestamp = date('Ymd_His');
             $filename = "cam{$camera->getId()}_{$timestamp}.jpg";
             $fullImagePath = $dayDir . "/{$filename}";
             $thumbnailPath = $thumbnailDir . "/thumbnail-{$filename}";
