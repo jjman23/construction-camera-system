@@ -62,9 +62,60 @@
                                           placeholder="Optional description">{{ is_edit ? camera.description : '' }}</textarea>
                             </div>
 
-			    <div class="mb-3">
+                            {# Restreamer stream picker #}
+                            <input type="hidden" id="restreamer_id" name="restreamer_id" value="{{ is_edit ? camera.restreamerId : '' }}">
+
+                            {% if is_edit and camera.restreamerId %}
+                                {% if restreamer_current is null %}
+                                    <div class="alert alert-danger mb-3">
+                                        <i class="bi bi-exclamation-triangle-fill"></i>
+                                        <strong>Stream mismatch:</strong> The linked Restreamer stream (<code>{{ camera.restreamerId }}</code>) no longer exists or is unreachable.
+                                        Use the picker below to re-link to a new stream.
+                                    </div>
+                                {% elseif not restreamer_current.running %}
+                                    <div class="alert alert-warning mb-3">
+                                        <i class="bi bi-pause-circle"></i>
+                                        <strong>Stream idle:</strong> The linked stream <strong>{{ restreamer_current.name }}</strong> is currently not running in Restreamer.
+                                    </div>
+                                {% else %}
+                                    <div class="alert alert-success mb-3">
+                                        <i class="bi bi-link-45deg"></i>
+                                        Linked to Restreamer stream: <strong>{{ restreamer_current.name }}</strong>
+                                    </div>
+                                {% endif %}
+                            {% endif %}
+
+                            {% if restreamer_available and restreamer_streams|length > 0 %}
+                            <div class="mb-3">
+                                <label for="restreamer_picker" class="form-label">
+                                    <i class="bi bi-collection-play"></i>
+                                    {{ (is_edit and camera.restreamerId) ? 'Re-link Restreamer Stream' : 'Select Restreamer Stream' }}
+                                </label>
+                                <select class="form-control" id="restreamer_picker">
+                                    <option value="">— {{ (is_edit and camera.restreamerId) ? 'Keep current / enter manually below' : 'Choose a stream or enter URLs manually' }} —</option>
+                                    {% for stream in restreamer_streams %}
+                                        <option value="{{ stream.id }}"
+                                                data-url="{{ stream.url }}"
+                                                {{ (is_edit and camera.restreamerId == stream.id) ? 'selected' : '' }}>
+                                            {{ stream.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">Selecting a stream auto-fills the URLs below.</div>
+                            </div>
+                            {% elseif restreamer_available %}
+                            <div class="alert alert-info mb-3">
+                                <i class="bi bi-info-circle"></i> All running Restreamer streams are already assigned to cameras.
+                            </div>
+                            {% else %}
+                            <div class="alert alert-warning mb-3">
+                                <i class="bi bi-wifi-off"></i> Restreamer is unavailable. Enter stream URLs manually.
+                            </div>
+                            {% endif %}
+
+                            <div class="mb-3">
                                 <label for="rtsp_url" class="form-label">
-                                    <i class="bi bi-link-45deg"></i> RTSP URL <span class="text-danger">*</span>
+                                    <i class="bi bi-link-45deg"></i> Snapshot URL <span class="text-danger">*</span>
                                 </label>
                                 <input type="url" 
                                        class="form-control" 
@@ -72,8 +123,8 @@
                                        name="rtsp_url" 
                                        value="{{ is_edit ? camera.rtspUrl : '' }}" 
                                        required
-                                       placeholder="http://camera-ip/live.html or http://camera-ip/stream.m3u8">
-                                <div class="form-text">Public-facing live stream URL (.html player or .m3u8 stream)</div>
+                                       placeholder="https://host/restreamer/memfs/{id}.m3u8">
+                                <div class="form-text">URL used by FFmpeg for snapshot capture</div>
                             </div>
 
                             <div class="mb-3">
@@ -85,8 +136,8 @@
                                        id="live_stream_url" 
                                        name="live_stream_url" 
                                        value="{{ is_edit ? camera.liveStreamUrl : '' }}" 
-                                       placeholder="rtsp://username:password@ip:port/stream">
-                                <div class="form-text">Full RTSP stream URL for snapshot capture (includes credentials)</div>
+                                       placeholder="https://host/restreamer/memfs/{id}.m3u8">
+                                <div class="form-text">URL used for the public live stream player</div>
                             </div>
 
                             <div class="mb-3">
@@ -310,5 +361,18 @@ document.getElementById('snapshot_enabled').addEventListener('change', function(
         settingsDiv.classList.add('d-none');
     }
 });
+
+// Restreamer stream picker
+const picker = document.getElementById('restreamer_picker');
+if (picker) {
+    picker.addEventListener('change', function() {
+        const selected = this.options[this.selectedIndex];
+        const url = selected.dataset.url || '';
+        const id = selected.value || '';
+        document.getElementById('restreamer_id').value = id;
+        document.getElementById('rtsp_url').value = url;
+        document.getElementById('live_stream_url').value = url;
+    });
+}
 </script>
 {% endblock %}

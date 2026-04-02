@@ -64,6 +64,10 @@ class Camera
     #[ORM\Column(type: 'string', length: 50, options: ['default' => 'pending'])]
     private string $lastSnapshotStatus = 'pending';
 
+    // Restreamer integration
+    #[ORM\Column(type: 'string', length: 255, nullable: true)]
+    private ?string $restreamerId = null;
+
     // Metadata
     #[ORM\Column(type: 'datetime')]
     private \DateTime $createdAt;
@@ -324,6 +328,18 @@ class Camera
     public function getImageDirectory(): string
     {
         return "cam{$this->id}";
+    }
+
+    public function getRestreamerId(): ?string
+    {
+        return $this->restreamerId;
+    }
+
+    public function setRestreamerId(?string $restreamerId): self
+    {
+        $this->restreamerId = $restreamerId;
+        $this->updatedAt = new \DateTime();
+        return $this;
     }
 
     public function __toString(): string

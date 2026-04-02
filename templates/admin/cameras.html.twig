@@ -122,7 +122,19 @@
                                        target="_blank">
                                         <i class="bi bi-eye"></i>
                                     </a>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-danger"
+                                            title="Delete Camera"
+                                            onclick="confirmDelete('delete-camera-{{ camera.id }}', '{{ camera.name|e('js') }}')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
                                 </div>
+                                <form id="delete-camera-{{ camera.id }}"
+                                      method="post"
+                                      action="{{ path('admin_camera_delete', {id: camera.id}) }}"
+                                      style="display:none;">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('delete_camera_' ~ camera.id) }}">
+                                </form>
                             </td>
                         </tr>
                         {% endfor %}

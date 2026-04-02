@@ -10,6 +10,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use App\Service\RestreamerService;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/admin')]
@@ -17,7 +18,8 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class AdminController extends AbstractController
 {
     public function __construct(
-        private EntityManagerInterface $entityManager
+        private EntityManagerInterface $entityManager,
+        private RestreamerService $restreamer,
     ) {}
 
     #[Route('/', name: 'admin_dashboard')]
@@ -130,6 +132,7 @@ class AdminController extends AbstractController
             // FIXED: Handle both URL fields separately
             $camera->setRtspUrl($request->request->get('rtsp_url'));
             $camera->setLiveStreamUrl($request->request->get('live_stream_url'));
+            $camera->setRestreamerId($request->request->get('restreamer_id') ?: null);
             
             $camera->setSnapshotEnabled((bool)$request->request->get('snapshot_enabled'));
             $camera->setSnapshotInterval((int)$request->request->get('snapshot_interval', 300));
@@ -146,10 +149,25 @@ class AdminController extends AbstractController
             return $this->redirectToRoute('admin_cameras');
         }
 
+        // Get running streams, excluding those already assigned to a camera
+        $assignedIds = $this->entityManager->getRepository(Camera::class)
+            ->createQueryBuilder('c')
+            ->select('c.restreamerId')
+            ->where('c.restreamerId IS NOT NULL')
+            ->getQuery()->getSingleColumnResult();
+
+        $availableStreams = array_values(array_filter(
+            $this->restreamer->getRunningStreams(),
+            fn($s) => !in_array($s['id'], $assignedIds, true)
+        ));
+
         return $this->render('admin/camera_form.html.twig', [
             'camera' => $camera,
             'buildings' => $buildings,
             'is_edit' => false,
+            'restreamer_available' => $this->restreamer->isAvailable(),
+            'restreamer_streams' => $availableStreams,
+            'restreamer_current' => null,
         ]);
     }
 
@@ -170,6 +188,7 @@ class AdminController extends AbstractController
             // FIXED: Handle both URL fields separately
             $camera->setRtspUrl($request->request->get('rtsp_url'));
             $camera->setLiveStreamUrl($request->request->get('live_stream_url'));
+            $camera->setRestreamerId($request->request->get('restreamer_id') ?: null);
             
             $camera->setSnapshotEnabled((bool)$request->request->get('snapshot_enabled'));
             $camera->setSnapshotInterval((int)$request->request->get('snapshot_interval'));
@@ -186,10 +205,33 @@ class AdminController extends AbstractController
             return $this->redirectToRoute('admin_cameras');
         }
 
+        // Check current Restreamer link status
+        $restreamerCurrent = null;
+        if ($camera->getRestreamerId()) {
+            $restreamerCurrent = $this->restreamer->getStream($camera->getRestreamerId());
+        }
+
+        // Running streams for re-link dropdown (exclude other cameras, keep current)
+        $assignedIds = $this->entityManager->getRepository(Camera::class)
+            ->createQueryBuilder('c')
+            ->select('c.restreamerId')
+            ->where('c.restreamerId IS NOT NULL')
+            ->andWhere('c.id != :id')
+            ->setParameter('id', $camera->getId())
+            ->getQuery()->getSingleColumnResult();
+
+        $availableStreams = array_values(array_filter(
+            $this->restreamer->getRunningStreams(),
+            fn($s) => !in_array($s['id'], $assignedIds, true)
+        ));
+
         return $this->render('admin/camera_form.html.twig', [
             'camera' => $camera,
             'buildings' => $buildings,
             'is_edit' => true,
+            'restreamer_available' => $this->restreamer->isAvailable(),
+            'restreamer_streams' => $availableStreams,
+            'restreamer_current' => $restreamerCurrent,
         ]);
     }
 
@@ -215,6 +257,38 @@ class AdminController extends AbstractController
             'totalPages' => ceil($totalLogs / $limit),
             'totalLogs' => $totalLogs,
         ]);
+    }
+
+    #[Route('/cameras/{id}/delete', name: 'admin_camera_delete', methods: ['POST'])]
+    public function deleteCamera(Camera $camera, Request $request): Response
+    {
+        if (!$this->isCsrfTokenValid('delete_camera_' . $camera->getId(), $request->request->get('_token'))) {
+            $this->addFlash('error', 'Invalid security token.');
+            return $this->redirectToRoute('admin_cameras');
+        }
+
+        $name = $camera->getName();
+        $this->entityManager->remove($camera);
+        $this->entityManager->flush();
+
+        $this->addFlash('success', "Camera \"{$name}\" has been deleted.");
+        return $this->redirectToRoute('admin_cameras');
+    }
+
+    #[Route('/buildings/{id}/delete', name: 'admin_building_delete', methods: ['POST'])]
+    public function deleteBuilding(Building $building, Request $request): Response
+    {
+        if (!$this->isCsrfTokenValid('delete_building_' . $building->getId(), $request->request->get('_token'))) {
+            $this->addFlash('error', 'Invalid security token.');
+            return $this->redirectToRoute('admin_buildings');
+        }
+
+        $name = $building->getName();
+        $this->entityManager->remove($building);
+        $this->entityManager->flush();
+
+        $this->addFlash('success', "Building \"{$name}\" and all its cameras have been deleted.");
+        return $this->redirectToRoute('admin_buildings');
     }
 
     #[Route('/snapshot/manual/{id}', name: 'admin_manual_snapshot', methods: ['POST'])]

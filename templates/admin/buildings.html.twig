@@ -80,7 +80,19 @@
                                        title="View Cameras">
                                         <i class="bi bi-camera"></i>
                                     </a>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-danger"
+                                            title="Delete Building"
+                                            onclick="confirmDelete('delete-building-{{ building.id }}', '{{ building.name|e('js') }}')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
                                 </div>
+                                <form id="delete-building-{{ building.id }}"
+                                      method="post"
+                                      action="{{ path('admin_building_delete', {id: building.id}) }}"
+                                      style="display:none;">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('delete_building_' ~ building.id) }}">
+                                </form>
                             </td>
                         </tr>
                         {% endfor %}

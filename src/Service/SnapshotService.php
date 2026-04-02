@@ -108,8 +108,9 @@ class SnapshotService
         }
 
         try {
-            // Create directory structure
-            $dateDir = date('Ymd');
+            // Create directory structure using Pacific time
+            $pacificTime = new \DateTime('now', new \DateTimeZone('America/Los_Angeles'));
+            $dateDir = $pacificTime->format('Ymd');
             $cameraDir = $this->imagesBasePath . "/cam{$camera->getId()}";
             $dayDir = $cameraDir . "/{$dateDir}";
             $thumbnailDir = $dayDir . "/thumbnail";
@@ -118,7 +119,7 @@ class SnapshotService
             $this->ensureDirectoryExists($thumbnailDir);
 
             // Generate filenames
-            $timestamp = date('Ymd_His');
+            $timestamp = $pacificTime->format('Ymd_His');
             $filename = "cam{$camera->getId()}_{$timestamp}.jpg";
             $fullImagePath = $dayDir . "/{$filename}";
             $thumbnailPath = $thumbnailDir . "/thumbnail-{$filename}";
@@ -280,56 +281,105 @@ class SnapshotService
     }
 
     /**
-     * Clean up old snapshots and logs
+     * Clean up old snapshots and logs.
+     *
+     * Retention policy:
+     *   - Last 90 days: keep all images
+     *   - Older than 90 days: keep only the first image per camera per hour
      */
-    public function cleanupOldFiles(int $daysToKeep = 30): void
+    public function cleanupOldFiles(): array
     {
-        $cutoffDate = new \DateTime("-{$daysToKeep} days");
-        
-        // Clean up old log entries
-        $this->entityManager->createQuery(
-            'DELETE FROM App\Entity\SnapshotLog sl WHERE sl.attemptedAt < :cutoff'
-        )->setParameter('cutoff', $cutoffDate)->execute();
+        $stats = ['dirs_thinned' => 0, 'files_deleted' => 0, 'logs_deleted' => 0];
+        $pacific = new \DateTimeZone('America/Los_Angeles');
+        $fullRetentionCutoff = new \DateTime('-90 days', $pacific);
 
-        // Clean up old snapshot files
+        // Purge snapshot log entries older than 90 days
+        $stats['logs_deleted'] = (int) $this->entityManager->createQuery(
+            'DELETE FROM App\Entity\SnapshotLog sl WHERE sl.attemptedAt < :cutoff'
+        )->setParameter('cutoff', $fullRetentionCutoff)->execute();
+
         $cameras = $this->entityManager->getRepository(Camera::class)->findAll();
-        
+
         foreach ($cameras as $camera) {
             $cameraDir = $this->imagesBasePath . "/cam{$camera->getId()}";
-            
+
             if (!is_dir($cameraDir)) {
                 continue;
             }
 
-            $directories = glob($cameraDir . '/????????'); // YYYYMMDD pattern
-            
-            foreach ($directories as $dir) {
-                $dirDate = \DateTime::createFromFormat('Ymd', basename($dir));
-                
-                if ($dirDate && $dirDate < $cutoffDate) {
-                    $this->removeDirectory($dir);
-                    $this->logger->info("Removed old snapshot directory: " . basename($dir));
+            foreach (glob($cameraDir . '/????????') as $dayDir) {
+                $dirDate = \DateTime::createFromFormat('Ymd', basename($dayDir), $pacific);
+
+                if (!$dirDate || $dirDate >= $fullRetentionCutoff) {
+                    continue; // Within 90-day full-retention window
+                }
+
+                $deleted = $this->thinDayDirectory($dayDir);
+                if ($deleted > 0) {
+                    $stats['dirs_thinned']++;
+                    $stats['files_deleted'] += $deleted;
+                    $this->logger->info(sprintf(
+                        'Thinned cam%d/%s: deleted %d files',
+                        $camera->getId(), basename($dayDir), $deleted
+                    ));
                 }
             }
         }
+
+        return $stats;
     }
 
     /**
-     * Recursively remove directory
+     * Thin a single day directory: keep the first full image per hour,
+     * delete the rest (and their matching thumbnails).
      */
-    private function removeDirectory(string $dir): void
+    private function thinDayDirectory(string $dayDir): int
     {
-        if (is_dir($dir)) {
-            $files = array_diff(scandir($dir), ['.', '..']);
-            
-            foreach ($files as $file) {
-                $path = $dir . '/' . $file;
-                is_dir($path) ? $this->removeDirectory($path) : unlink($path);
-            }
-            
-            rmdir($dir);
+        $thumbnailDir = $dayDir . '/thumbnail';
+        $deleted = 0;
+
+        // Collect all full-size images sorted by name (chronological)
+        $files = glob($dayDir . '/*.jpg');
+        if (empty($files)) {
+            return 0;
         }
+        sort($files);
+
+        $keptHours = [];
+
+        foreach ($files as $filePath) {
+            $filename = basename($filePath);
+            $parts = explode('_', $filename);
+
+            // Filename format: cam{id}_{Ymd}_{His}.jpg
+            if (count($parts) < 3) {
+                continue;
+            }
+
+            $timeStr = pathinfo($parts[2], PATHINFO_FILENAME); // e.g. 083500
+            $hour = substr($timeStr, 0, 2);
+
+            if (!isset($keptHours[$hour])) {
+                // First image of this hour — keep it
+                $keptHours[$hour] = $filename;
+                continue;
+            }
+
+            // Not the first — delete full image and matching thumbnail
+            if (@unlink($filePath)) {
+                $deleted++;
+            }
+
+            $thumbPath = $thumbnailDir . '/thumbnail-' . $filename;
+            if (file_exists($thumbPath) && @unlink($thumbPath)) {
+                $deleted++;
+            }
+        }
+
+        return $deleted;
     }
+
+
 
     /**
      * Get snapshot statistics

@@ -31,3 +31,9 @@ services:
 
     App\Controller\LoginController:
         public: true
+
+    App\Service\RestreamerService:
+        arguments:
+            $restreamerUrl: '%env(RESTREAMER_URL)%'
+            $publicBaseUrl: '%env(RESTREAMER_PUBLIC_BASE_URL)%'
+            $dbPath: '%env(RESTREAMER_DB_PATH)%'
