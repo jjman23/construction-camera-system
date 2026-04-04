@@ -149,7 +149,7 @@
             <h5>No Images Available</h5>
             <p class="mb-3">No snapshots were taken on this date.</p>
             
-            {% if date == 'now'|date('Ymd') %}
+            {% if date == 'now'|date('Ymd', 'America/Los_Angeles') %}
                 <div class="alert alert-info d-inline-block">
                     <i class="bi bi-info-circle"></i>
                     Snapshots are taken automatically during construction hours 
@@ -297,7 +297,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Auto-refresh every 5 minutes if viewing today's gallery
-{% if date == 'now'|date('Ymd') %}
+{% if date == 'now'|date('Ymd', 'America/Los_Angeles') %}
 setInterval(refreshGallery, 300000); // 5 minutes
 {% endif %}
 </script>

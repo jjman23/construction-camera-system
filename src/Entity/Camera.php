@@ -312,7 +312,7 @@ class Camera
     public function isWithinConstructionHours(?\DateTime $time = null): bool
     {
         if ($time === null) {
-            $time = new \DateTime();
+            $time = new \DateTime('now', new \DateTimeZone('America/Los_Angeles'));
         }
         
         $currentTime = $time->format('H:i:s');

@@ -115,8 +115,9 @@ class MainController extends AbstractController
             throw $this->createNotFoundException('Gallery not available for this camera');
         }
 
-        // Get today's date for gallery
-        $date = date('Ymd');
+        // Get today's date for gallery (Pacific time)
+        $pacificNow = new \DateTime('now', new \DateTimeZone('America/Los_Angeles'));
+        $date = $pacificNow->format('Ymd');
         $galleryData = $this->getGalleryImages($camera, $date);
 
         return $this->render('camera_gallery.html.twig', [

@@ -93,7 +93,7 @@ class SnapshotCommand extends Command
         
         while (true) {
             $iteration++;
-            $io->section("Iteration #{$iteration} - " . date('Y-m-d H:i:s'));
+            $io->section("Iteration #{$iteration} - " . (new \DateTime('now', new \DateTimeZone('America/Los_Angeles')))->format('Y-m-d H:i:s T'));
             
             try {
                 $startTime = microtime(true);

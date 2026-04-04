@@ -228,7 +228,7 @@
 						<input type="date" 
 							   id="gallery-date-picker" 
 							   class="form-control form-control-sm"
-							   value="{{ 'now'|date('Y-m-d') }}"
+							   value="{{ 'now'|date('Y-m-d', 'America/Los_Angeles') }}"
 							   onchange="goToGalleryDate()">
 						<button class="btn btn-outline-light btn-sm" type="button" onclick="goToGalleryDate()">
 							<i class="bi bi-calendar"></i>
@@ -262,7 +262,7 @@
                                             <div class="fw-medium">{{ nav_camera.name }}</div>
                                             <small class="text-muted">
                                                 {% if nav_camera.lastSnapshotAt %}
-                                                    Last: {{ nav_camera.lastSnapshotAt|date('H:i') }}
+                                                    Last: {{ nav_camera.lastSnapshotAt|date('H:i', 'America/Los_Angeles') }}
                                                 {% else %}
                                                     No snapshots yet
                                                 {% endif %}
