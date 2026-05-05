@@ -152,7 +152,92 @@ class MainController extends AbstractController
         ]);
     }
 
-    #[Route('/api/image/{camera_id}', name: 'api_camera_image', requirements: ['camera_id' => '\d+'])]
+    #[Route('/{building_slug}/cameras', name: 'building_home_scoped')]
+    public function buildingHomeScoped(string $building_slug): Response
+    {
+        $building = $this->getBuilding($building_slug);
+
+        $camera = $building->getActiveCameras()
+            ->filter(fn($c) => $c->isLiveEnabled())
+            ->first();
+
+        if (!$camera) {
+            return $this->render('no_cameras.html.twig', ['building' => $building]);
+        }
+
+        return $this->redirectToRoute('camera_live_scoped', [
+            'building_slug' => $building_slug,
+            'camera_id' => $camera->getId()
+        ]);
+    }
+
+    #[Route('/{building_slug}/cameras/{camera_id}', name: 'camera_live_scoped', requirements: ['camera_id' => '\d+'])]
+    public function cameraLiveScoped(string $building_slug, int $camera_id): Response
+    {
+        $building = $this->getBuilding($building_slug);
+        $camera = $this->getCamera($camera_id, $building);
+
+        if (!$camera->isLiveEnabled()) {
+            throw $this->createNotFoundException('Live view not available for this camera');
+        }
+
+        return $this->render('camera_live.html.twig', [
+            'building' => $building,
+            'camera' => $camera,
+            'cameras' => $this->getAvailableCameras($building),
+            'sidebar_building' => $building,
+        ]);
+    }
+
+    #[Route('/{building_slug}/cameras/{camera_id}/gallery', name: 'camera_gallery_scoped', requirements: ['camera_id' => '\d+'])]
+    public function cameraGalleryScoped(string $building_slug, int $camera_id): Response
+    {
+        $building = $this->getBuilding($building_slug);
+        $camera = $this->getCamera($camera_id, $building);
+
+        if (!$camera->isGalleryEnabled()) {
+            throw $this->createNotFoundException('Gallery not available for this camera');
+        }
+
+        $pacificNow = new \DateTime('now', new \DateTimeZone('America/Los_Angeles'));
+        $date = $pacificNow->format('Ymd');
+        $galleryData = $this->getGalleryImages($camera, $date);
+
+        return $this->render('camera_gallery.html.twig', [
+            'building' => $building,
+            'camera' => $camera,
+            'cameras' => $this->getAvailableCameras($building),
+            'images' => $galleryData['images'],
+            'thumbnails' => $galleryData['thumbnails'],
+            'date' => $date,
+            'sidebar_building' => $building,
+        ]);
+    }
+
+    #[Route('/{building_slug}/cameras/{camera_id}/gallery/{date}', name: 'camera_gallery_date_scoped', requirements: ['camera_id' => '\d+', 'date' => '\d{8}'])]
+    public function cameraGalleryDateScoped(string $building_slug, int $camera_id, string $date): Response
+    {
+        $building = $this->getBuilding($building_slug);
+        $camera = $this->getCamera($camera_id, $building);
+
+        if (!$camera->isGalleryEnabled()) {
+            throw $this->createNotFoundException('Gallery not available for this camera');
+        }
+
+        $galleryData = $this->getGalleryImages($camera, $date);
+
+        return $this->render('camera_gallery.html.twig', [
+            'building' => $building,
+            'camera' => $camera,
+            'cameras' => $this->getAvailableCameras($building),
+            'images' => $galleryData['images'],
+            'thumbnails' => $galleryData['thumbnails'],
+            'date' => $date,
+            'sidebar_building' => $building,
+        ]);
+    }
+
+        #[Route('/api/image/{camera_id}', name: 'api_camera_image', requirements: ['camera_id' => '\d+'])]
     public function apiCameraImage(int $camera_id): Response
     {
         $camera = $this->entityManager->getRepository(Camera::class)->find($camera_id);

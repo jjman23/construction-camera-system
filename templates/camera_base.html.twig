@@ -249,14 +249,14 @@
     <nav class="sidebar" id="sidebar">
         <div class="p-3">
             {% block navigation %}
-                {% set buildings = get_all_buildings() %}
-                {% for nav_building in buildings %}
+                {% set nav_buildings = sidebar_building is defined ? [sidebar_building] : get_all_buildings() %}
+                {% for nav_building in nav_buildings %}
                     {% if nav_building.activeCameras|length > 0 %}
                         <div class="building-section">
                             <div class="building-title">{{ nav_building.name }}</div>
                             {% for nav_camera in nav_building.activeCameras %}
                                 {% if nav_camera.liveEnabled %}
-                                    <a href="{{ path('camera_live', {building_slug: nav_building.slug, camera_id: nav_camera.id}) }}" 
+                                    <a href="{{ sidebar_building is defined ? path('camera_live_scoped', {building_slug: nav_building.slug, camera_id: nav_camera.id}) : path('camera_live', {building_slug: nav_building.slug, camera_id: nav_camera.id}) }}" 
                                        class="nav-link d-flex align-items-center {{ (camera is defined and camera.id == nav_camera.id) ? 'active' : '' }}">
                                         <div class="flex-grow-1">
                                             <div class="fw-medium">{{ nav_camera.name }}</div>
@@ -269,7 +269,7 @@
                                             </small>
                                         </div>
                                         {% if nav_camera.galleryEnabled %}
-                                            <a href="{{ path('camera_gallery', {building_slug: nav_building.slug, camera_id: nav_camera.id}) }}" 
+                                            <a href="{{ sidebar_building is defined ? path('camera_gallery_scoped', {building_slug: nav_building.slug, camera_id: nav_camera.id}) : path('camera_gallery', {building_slug: nav_building.slug, camera_id: nav_camera.id}) }}" 
                                                class="btn btn-sm btn-outline-secondary ms-2"
                                                onclick="event.stopPropagation();"
                                                title="Gallery">
@@ -321,7 +321,7 @@
             const selectedDate = datePicker.value.replace(/-/g, ''); // Convert YYYY-MM-DD to YYYYMMDD
             
             {% if camera is defined and building is defined %}
-            const baseUrl = '{{ path('camera_gallery', {building_slug: building.slug, camera_id: camera.id}) }}';
+            const baseUrl = '{{ sidebar_building is defined ? path('camera_gallery_scoped', {building_slug: building.slug, camera_id: camera.id}) : path('camera_gallery', {building_slug: building.slug, camera_id: camera.id}) }}';
             window.location.href = baseUrl + '/' + selectedDate;
             {% endif %}
         }

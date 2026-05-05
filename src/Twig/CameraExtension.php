@@ -17,6 +17,7 @@ class CameraExtension extends AbstractExtension
     {
         return [
             new TwigFunction('get_all_buildings', [$this, 'getAllBuildings']),
+            new TwigFunction('get_building_by_slug', [$this, 'getBuildingBySlug']),
         ];
     }
 
@@ -31,5 +32,11 @@ class CameraExtension extends AbstractExtension
             ->addOrderBy('c.displayOrder', 'ASC')
             ->getQuery()
             ->getResult();
+    }
+
+    public function getBuildingBySlug(string $slug): ?Building
+    {
+        return $this->entityManager->getRepository(Building::class)
+            ->findOneBy(['slug' => $slug, 'active' => true]);
     }
 }
