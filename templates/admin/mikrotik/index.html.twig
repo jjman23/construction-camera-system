@@ -1,0 +1,111 @@
+{% extends "admin/base.html.twig" %}
+{% import "admin/mikrotik/_macros.html.twig" as mt %}
+
+{% block title %}MikroTik Links - Construction Camera Admin{% endblock %}
+{% block page_title %}MikroTik Wifi Links{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ path('admin_mikrotik_new') }}" class="btn btn-primary">
+        <i class="bi bi-plus"></i> Add MikroTik
+    </a>
+{% endblock %}
+
+{% block content %}
+<div class="card shadow">
+    <div class="card-header">
+        <h6 class="m-0 font-weight-bold text-primary">
+            <i class="bi bi-router"></i> Wifi Stations
+        </h6>
+    </div>
+    <div class="card-body">
+        {% if devices|length > 0 %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Name</th>
+                            <th>Building</th>
+                            <th>Status</th>
+                            <th>AP</th>
+                            <th>Signal</th>
+                            <th>SNR</th>
+                            <th>CCQ (tx/rx)</th>
+                            <th>Rate (tx/rx)</th>
+                            <th>Link uptime</th>
+                            <th>Last poll</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for device in devices %}
+                        {% set s = latest[device.id] %}
+                        {% set linked = s and s.status == 'ok' %}
+                        <tr class="{{ device.active ? '' : 'text-muted' }}">
+                            <td>
+                                <a href="{{ path('admin_mikrotik_show', {id: device.id}) }}"><strong>{{ device.name }}</strong></a>
+                                <br><small class="text-muted"><code>{{ device.host }}:{{ device.port }}</code></small>
+                                {% if not device.active %}<span class="badge bg-secondary ms-1">Disabled</span>{% endif %}
+                            </td>
+                            <td>{{ device.building ? device.building.name : '–' }}</td>
+                            <td>
+                                {{ mt.status_badge(device.lastStatus) }}
+                                {% if device.lastError and device.lastStatus != 'ok' %}
+                                    <br><small class="text-danger">{{ device.lastError|length > 60 ? device.lastError|slice(0, 60) ~ '…' : device.lastError }}</small>
+                                {% endif %}
+                            </td>
+                            <td>{{ linked ? (s.remoteName ?: s.remoteMac) : '–' }}</td>
+                            <td>{{ mt.signal(linked ? s.signalStrength : null) }}</td>
+                            <td>{{ linked and s.signalToNoise is not null ? s.signalToNoise ~ ' dB' : '–' }}</td>
+                            <td>{{ linked and s.txCcq is not null ? s.txCcq ~ '%' : '–' }} / {{ linked and s.rxCcq is not null ? s.rxCcq ~ '%' : '–' }}</td>
+                            <td><small>{{ linked ? (s.txRate ?: '–') : '–' }}<br>{{ linked ? (s.rxRate ?: '–') : '' }}</small></td>
+                            <td>{{ mt.uptime(linked ? s.uptimeSeconds : null) }}</td>
+                            <td>
+                                {% if device.lastPolledAt %}
+                                    <small>{{ device.lastPolledAt|date('M j, H:i', 'America/Los_Angeles') }}</small>
+                                {% else %}
+                                    <small class="text-muted">Never</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{{ path('admin_mikrotik_show', {id: device.id}) }}" class="btn btn-sm btn-outline-info" title="History">
+                                        <i class="bi bi-graph-up"></i>
+                                    </a>
+                                    <button type="submit" form="poll-mikrotik-{{ device.id }}" class="btn btn-sm btn-outline-success" title="Poll now">
+                                        <i class="bi bi-arrow-repeat"></i>
+                                    </button>
+                                    <a href="{{ path('admin_mikrotik_edit', {id: device.id}) }}" class="btn btn-sm btn-outline-primary" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" title="Delete"
+                                            onclick="confirmDelete('delete-mikrotik-{{ device.id }}', '{{ device.name|e('js') }}')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                                <form id="poll-mikrotik-{{ device.id }}" method="post" action="{{ path('admin_mikrotik_poll', {id: device.id}) }}" style="display:none;">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('poll_mikrotik_' ~ device.id) }}">
+                                    <input type="hidden" name="back" value="index">
+                                </form>
+                                <form id="delete-mikrotik-{{ device.id }}" method="post" action="{{ path('admin_mikrotik_delete', {id: device.id}) }}" style="display:none;">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('delete_mikrotik_' ~ device.id) }}">
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <p class="text-muted small mb-0">Stations are polled every 5 minutes. Signal: <span class="text-success">≥ −65 dBm good</span>, <span class="text-warning">−65 to −75 fair</span>, <span class="text-danger">&lt; −75 poor</span>.</p>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-router fs-1 text-muted"></i>
+                <h5 class="mt-3 text-muted">No MikroTik devices yet</h5>
+                <p class="text-muted">Add a wifi station to start collecting link stats.</p>
+                <a href="{{ path('admin_mikrotik_new') }}" class="btn btn-primary">
+                    <i class="bi bi-plus"></i> Add First MikroTik
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

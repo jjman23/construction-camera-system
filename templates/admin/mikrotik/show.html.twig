@@ -1,0 +1,195 @@
+{% extends "admin/base.html.twig" %}
+{% import "admin/mikrotik/_macros.html.twig" as mt %}
+
+{% block title %}{{ device.name }} - MikroTik - Construction Camera Admin{% endblock %}
+{% block page_title %}<i class="bi bi-router"></i> {{ device.name }}{% endblock %}
+
+{% block page_actions %}
+    <form method="post" action="{{ path('admin_mikrotik_poll', {id: device.id}) }}" class="me-2">
+        <input type="hidden" name="_token" value="{{ csrf_token('poll_mikrotik_' ~ device.id) }}">
+        <button type="submit" class="btn btn-success"><i class="bi bi-arrow-repeat"></i> Poll now</button>
+    </form>
+    <a href="{{ path('admin_mikrotik_edit', {id: device.id}) }}" class="btn btn-outline-primary me-2"><i class="bi bi-pencil"></i> Edit</a>
+    <a href="{{ path('admin_mikrotik') }}" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> All links</a>
+{% endblock %}
+
+{% block content %}
+{% set linked = latest and latest.status == 'ok' %}
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card shadow-sm h-100"><div class="card-body">
+            <div class="text-muted small">Status</div>
+            <div class="fs-5">{{ mt.status_badge(device.lastStatus) }}</div>
+            <div class="small text-muted mt-1">
+                {{ device.lastPolledAt ? device.lastPolledAt|date('M j, H:i', 'America/Los_Angeles') : 'Never polled' }}
+            </div>
+        </div></div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card shadow-sm h-100"><div class="card-body">
+            <div class="text-muted small">Signal</div>
+            <div class="fs-4">{{ mt.signal(linked ? latest.signalStrength : null) }}</div>
+            {% if linked and latest.txSignalStrength is not null %}<div class="small text-muted">Remote: {{ latest.txSignalStrength }} dBm</div>{% endif %}
+        </div></div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card shadow-sm h-100"><div class="card-body">
+            <div class="text-muted small">SNR</div>
+            <div class="fs-4">{{ linked and latest.signalToNoise is not null ? latest.signalToNoise ~ ' dB' : '–' }}</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card shadow-sm h-100"><div class="card-body">
+            <div class="text-muted small">CCQ tx / rx</div>
+            <div class="fs-4">{{ linked and latest.txCcq is not null ? latest.txCcq ~ '%' : '–' }} / {{ linked and latest.rxCcq is not null ? latest.rxCcq ~ '%' : '–' }}</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card shadow-sm h-100"><div class="card-body">
+            <div class="text-muted small">Rate tx / rx</div>
+            <div class="small">{{ linked ? (latest.txRate ?: '–') : '–' }}<br>{{ linked ? (latest.rxRate ?: '–') : '' }}</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card shadow-sm h-100"><div class="card-body">
+            <div class="text-muted small">Link uptime</div>
+            <div class="fs-5">{{ mt.uptime(linked ? latest.uptimeSeconds : null) }}</div>
+            <div class="small text-muted">AP: {{ linked ? (latest.remoteName ?: latest.remoteMac) : '–' }}</div>
+        </div></div>
+    </div>
+</div>
+
+{% if device.lastError and device.lastStatus != 'ok' %}
+    <div class="alert alert-{{ device.lastStatus == 'no_link' ? 'warning' : 'danger' }}"><i class="bi bi-exclamation-triangle"></i> {{ device.lastError }}</div>
+{% endif %}
+
+<div class="card shadow mb-4">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <h6 class="m-0 font-weight-bold text-primary"><i class="bi bi-graph-up"></i> History</h6>
+        <div class="d-flex align-items-center gap-3">
+            {% if availability is not null %}
+                <small class="text-muted">Link up {{ availability }}% of {{ pollCount }} polls</small>
+            {% endif %}
+            <div class="btn-group btn-group-sm">
+                {% for r in ranges %}
+                    <a href="{{ path('admin_mikrotik_show', {id: device.id, range: r}) }}" class="btn btn-outline-secondary {{ r == range ? 'active' : '' }}">{{ r }}</a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if points|length > 0 %}
+            <div style="position:relative;height:260px" class="mb-4"><canvas id="signalChart"></canvas></div>
+            <div style="position:relative;height:220px" class="mb-4"><canvas id="ccqChart"></canvas></div>
+            <div style="position:relative;height:220px"><canvas id="rateChart"></canvas></div>
+            <p class="small text-muted mt-2 mb-0">Gaps are polls where the station was unreachable or not associated. Times are Pacific.</p>
+        {% else %}
+            <p class="text-muted mb-0">No data in this range yet.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card shadow mb-4">
+    <div class="card-header">
+        <h6 class="m-0 font-weight-bold text-primary"><i class="bi bi-list-ul"></i> Recent polls</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead class="table-light">
+                    <tr><th>Time</th><th>Status</th><th>AP</th><th>Signal</th><th>SNR</th><th>CCQ</th><th>TX rate</th><th>RX rate</th><th>Error</th></tr>
+                </thead>
+                <tbody>
+                    {% for s in recent %}
+                    <tr>
+                        <td><small>{{ s.polledAt|date('M j, H:i:s', 'America/Los_Angeles') }}</small></td>
+                        <td>{{ mt.status_badge(s.status) }}</td>
+                        <td><small>{{ s.remoteName ?: (s.remoteMac ?: '–') }}</small></td>
+                        <td>{{ mt.signal(s.signalStrength) }}</td>
+                        <td>{{ s.signalToNoise is not null ? s.signalToNoise ~ ' dB' : '–' }}</td>
+                        <td>{{ s.txCcq is not null ? s.txCcq ~ '%' : '–' }}{{ s.rxCcq is not null ? ' / ' ~ s.rxCcq ~ '%' : '' }}</td>
+                        <td><small>{{ s.txRate ?: '–' }}</small></td>
+                        <td><small>{{ s.rxRate ?: '–' }}</small></td>
+                        <td><small class="text-danger">{{ s.errorMessage }}</small></td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="9" class="text-muted">No polls in this range.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow">
+    <div class="card-body small text-muted">
+        <strong>Host:</strong> <code>{{ device.host }}:{{ device.port }}</code>{{ device.useSsl ? ' (api-ssl)' : '' }}
+        &nbsp;·&nbsp; <strong>User:</strong> {{ device.username }}
+        &nbsp;·&nbsp; <strong>Building:</strong> {{ device.building ? device.building.name : '–' }}
+        {% if device.wirelessInterface %}&nbsp;·&nbsp; <strong>Interface:</strong> {{ device.wirelessInterface }}{% endif %}
+        {% if device.notes %}<div class="mt-2">{{ device.notes|nl2br }}</div>{% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+{% if points|length > 0 %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    const points = {{ points|json_encode|raw }};
+    const xs = points.map(p => new Date(p.t).getTime());
+    const multiDay = xs.length && (xs[xs.length - 1] - xs[0]) > 36 * 3600 * 1000;
+
+    const fmt = (ms) => {
+        const d = new Date(ms);
+        const hm = d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
+        return multiDay ? (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm : hm;
+    };
+
+    const series = (key) => points.map((p, i) => ({ x: xs[i], y: p[key] }));
+
+    const make = (id, title, datasets, yOpts, extraScales = {}) => new Chart(document.getElementById(id), {
+        type: 'line',
+        data: { datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            parsing: false,
+            spanGaps: false,
+            interaction: { mode: 'nearest', axis: 'x', intersect: false },
+            elements: { point: { radius: 0, hitRadius: 6 }, line: { borderWidth: 2, tension: 0.2 } },
+            plugins: {
+                title: { display: true, text: title, align: 'start' },
+                tooltip: { callbacks: { title: (items) => fmt(items[0].parsed.x) } },
+            },
+            scales: {
+                x: { type: 'linear', ticks: { callback: fmt, maxTicksLimit: 8 }, grid: { display: false } },
+                y: yOpts,
+                ...extraScales,
+            },
+        },
+    });
+
+    make('signalChart', 'Signal (dBm) & SNR (dB)', [
+        { label: 'Signal', data: series('signal'), borderColor: '#0d6efd', backgroundColor: '#0d6efd', yAxisID: 'y' },
+        { label: 'Remote signal', data: series('txSignal'), borderColor: '#6f42c1', backgroundColor: '#6f42c1', borderDash: [4, 3], yAxisID: 'y' },
+        { label: 'SNR', data: series('snr'), borderColor: '#20c997', backgroundColor: '#20c997', yAxisID: 'y2' },
+    ], { title: { display: true, text: 'dBm' } },
+       { y2: { position: 'right', title: { display: true, text: 'SNR dB' }, grid: { display: false } } });
+
+    make('ccqChart', 'CCQ (%)', [
+        { label: 'TX CCQ', data: series('txCcq'), borderColor: '#fd7e14', backgroundColor: '#fd7e14' },
+        { label: 'RX CCQ', data: series('rxCcq'), borderColor: '#adb5bd', backgroundColor: '#adb5bd' },
+    ], { min: 0, max: 100 });
+
+    make('rateChart', 'Data rate (Mbps)', [
+        { label: 'TX rate', data: series('txRate'), borderColor: '#198754', backgroundColor: '#198754', stepped: true },
+        { label: 'RX rate', data: series('rxRate'), borderColor: '#0dcaf0', backgroundColor: '#0dcaf0', stepped: true },
+    ], { beginAtZero: true });
+})();
+</script>
+{% endif %}
+{% endblock %}

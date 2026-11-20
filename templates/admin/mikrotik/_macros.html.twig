@@ -1,0 +1,31 @@
+{% macro status_badge(status) %}
+    {% if status == 'ok' %}
+        <span class="badge bg-success">Linked</span>
+    {% elseif status == 'no_link' %}
+        <span class="badge bg-warning text-dark">No link</span>
+    {% elseif status == 'error' %}
+        <span class="badge bg-danger">Unreachable</span>
+    {% else %}
+        <span class="badge bg-secondary">Pending</span>
+    {% endif %}
+{% endmacro %}
+
+{# Signal colour: >= -65 good, -65..-75 fair, < -75 poor #}
+{% macro signal(dbm) %}
+    {% if dbm is null %}
+        <span class="text-muted">–</span>
+    {% else %}
+        <span class="fw-semibold {{ dbm >= -65 ? 'text-success' : (dbm >= -75 ? 'text-warning' : 'text-danger') }}">{{ dbm }} dBm</span>
+    {% endif %}
+{% endmacro %}
+
+{% macro uptime(seconds) %}
+    {% if seconds is null %}
+        <span class="text-muted">–</span>
+    {% else %}
+        {% set d = (seconds // 86400) %}
+        {% set h = (seconds % 86400) // 3600 %}
+        {% set m = (seconds % 3600) // 60 %}
+        {{ d > 0 ? d ~ 'd ' : '' }}{{ h }}h {{ m }}m
+    {% endif %}
+{% endmacro %}
